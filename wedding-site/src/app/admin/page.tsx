@@ -4,6 +4,8 @@ import { getAdminSummary } from "@/lib/admin-data";
 import { MEAL_OPTIONS, type MealChoice } from "@/lib/meals";
 import AdminLogoutButton from "./admin-logout-button";
 import QrGenerator from "./qr-generator";
+import AddGuestForm from "./add-guest-form";
+import RemoveContactButton from "./remove-contact-button";
 
 const MEAL_LABEL: Record<MealChoice, string> = Object.fromEntries(
   MEAL_OPTIONS.map((m) => [m.id, m.name])
@@ -77,14 +79,15 @@ export default async function AdminPage() {
         <SummaryCard label="No selection yet" value={s.meals.unselected} />
       </div>
 
-      {/* Guest progress across the full invite list */}
+      {/* Guest list management + progress across the full invite list */}
       <section className="mb-12">
         <div className="flex items-baseline justify-between mb-4 gap-4 flex-wrap">
-          <h2 className="font-serif text-2xl text-foreground">Guest Progress</h2>
+          <h2 className="font-serif text-2xl text-foreground">Guest List</h2>
           <p className="font-sans text-sm text-muted">
-            {s.signedIn} signed in · {notSignedIn} not yet
+            {s.invited} invited · {s.signedIn} signed in · {notSignedIn} not yet
           </p>
         </div>
+        <AddGuestForm />
         <div className="overflow-x-auto rounded-lg border border-accent-light/60">
           <table className="w-full text-left font-sans text-sm">
             <thead className="bg-accent-light/15 text-muted uppercase tracking-[0.1em] text-xs">
@@ -94,6 +97,7 @@ export default async function AdminPage() {
                 <th className="px-4 py-3 font-medium text-center">Your Party</th>
                 <th className="px-4 py-3 font-medium text-center">Dinner</th>
                 <th className="px-4 py-3 font-medium text-center">Party Size</th>
+                <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -139,6 +143,13 @@ export default async function AdminPage() {
                   </td>
                   <td className="px-4 py-3 text-center text-muted">
                     {c.partySubmitted && !c.declined ? c.memberCount : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <RemoveContactButton
+                      id={c.contactId}
+                      name={c.name}
+                      hasResponded={c.partySubmitted}
+                    />
                   </td>
                 </tr>
               ))}

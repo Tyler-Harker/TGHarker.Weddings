@@ -63,6 +63,9 @@ deadline). Guests can still log in to view their selections after it closes.
 
 A simple admin view at `/admin` (login at `/admin/login`) shows:
 
+- **Guest List** management — add guests (name, optional household + email) and
+  remove them inline. Removing a contact cascades to their RSVP party and meal
+  selections. This is how you populate a fresh production invite list.
 - **Guest Progress** across the whole invite list — who has **signed in** (and
   when) vs. not, plus per-stage completion (Your Party, Dinner) for each contact.
 - **All Guests** — every party member (incl. plus-ones), which RSVP added them,
