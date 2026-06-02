@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wedding
+      POSTGRES_PASSWORD: wedding
+      POSTGRES_DB: wedding
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # *.sql files here run automatically the first time the volume is created.
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wedding -d wedding"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Optional: run the full stack (app + db) in containers for a prod-like check.
+  # For day-to-day development, run `docker compose up db` and `npm run dev` on the host.
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://wedding:wedding@db:5432/wedding
+      JWT_SECRET: dev-secret-change-me
+      ADMIN_EMAIL: test@test.com
+      ADMIN_PASSWORD: password
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

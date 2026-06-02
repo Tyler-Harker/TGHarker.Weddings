@@ -1,12 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
+  // Self-contained server build for the Docker image (see Dockerfile).
+  output: "standalone",
   images: {
     unoptimized: true,
   },
-  // Uncomment and set this if deploying to a subpath (e.g., username.github.io/repo-name)
-  // basePath: "/repo-name",
 };
 
 export default nextConfig;

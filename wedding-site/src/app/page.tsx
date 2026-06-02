@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-
-const WEDDING_DATE = new Date("2026-11-21T00:00:00");
+import Link from "next/link";
+import { WEDDING_DATE } from "@/lib/event";
 
 interface TimeLeft {
   days: number;
@@ -47,16 +47,25 @@ function Divider() {
 }
 
 export default function Home() {
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft());
-  const [mounted, setMounted] = useState(false);
+  // Start at zeros so the server render and first client render match (no
+  // hydration mismatch); the real values are filled in after mount.
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
 
   useEffect(() => {
-    setMounted(true);
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
+    const tick = () => setTimeLeft(calculateTimeLeft());
+    // setTimeout(0) keeps the first update out of the synchronous effect body.
+    const initial = setTimeout(tick, 0);
+    const timer = setInterval(tick, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(timer);
+    };
   }, []);
 
   return (
@@ -113,26 +122,25 @@ export default function Home() {
         </p>
       </div>
 
+      {/* RSVP call to action */}
+      <Link
+        href="/rsvp"
+        className="mb-12 inline-block rounded-full bg-accent px-10 py-4 font-sans text-sm uppercase tracking-[0.25em] text-white shadow-md transition-colors duration-300 hover:bg-foreground"
+      >
+        RSVP
+      </Link>
+
       {/* Countdown */}
       <div className="mb-12">
         <p className="text-xs uppercase tracking-[0.3em] text-muted font-sans text-center mb-6">
           Counting down
         </p>
-        {mounted ? (
-          <div className="flex gap-6 md:gap-10">
-            <CountdownUnit value={timeLeft.days} label="Days" />
-            <CountdownUnit value={timeLeft.hours} label="Hours" />
-            <CountdownUnit value={timeLeft.minutes} label="Minutes" />
-            <CountdownUnit value={timeLeft.seconds} label="Seconds" />
-          </div>
-        ) : (
-          <div className="flex gap-6 md:gap-10">
-            <CountdownUnit value={0} label="Days" />
-            <CountdownUnit value={0} label="Hours" />
-            <CountdownUnit value={0} label="Minutes" />
-            <CountdownUnit value={0} label="Seconds" />
-          </div>
-        )}
+        <div className="flex gap-6 md:gap-10">
+          <CountdownUnit value={timeLeft.days} label="Days" />
+          <CountdownUnit value={timeLeft.hours} label="Hours" />
+          <CountdownUnit value={timeLeft.minutes} label="Minutes" />
+          <CountdownUnit value={timeLeft.seconds} label="Seconds" />
+        </div>
       </div>
 
       <Divider />
