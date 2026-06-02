@@ -3,6 +3,7 @@ import { getAdminSession } from "@/lib/session";
 import { getAdminSummary } from "@/lib/admin-data";
 import { MEAL_OPTIONS, type MealChoice } from "@/lib/meals";
 import AdminLogoutButton from "./admin-logout-button";
+import QrGenerator from "./qr-generator";
 
 const MEAL_LABEL: Record<MealChoice, string> = Object.fromEntries(
   MEAL_OPTIONS.map((m) => [m.id, m.name])
@@ -188,6 +189,16 @@ export default async function AdminPage() {
             </table>
           </div>
         )}
+      </section>
+
+      {/* QR code generator */}
+      <section className="mt-12">
+        <h2 className="font-serif text-2xl text-foreground mb-2">QR Code</h2>
+        <p className="font-sans text-sm text-muted mb-4">
+          Generate a QR code for any page on this site. It uses the domain you&apos;re
+          currently viewing from.
+        </p>
+        <QrGenerator />
       </section>
     </main>
   );

@@ -68,6 +68,9 @@ A simple admin view at `/admin` (login at `/admin/login`) shows:
 - **All Guests** — every party member (incl. plus-ones), which RSVP added them,
   and their meal.
 - Summary counts and a meal-choice breakdown.
+- **QR Code generator** — type any path and download a PNG QR code pointing to it
+  on the current domain (e.g. for invitations linking to `/rsvp`). The domain is
+  read from the browser, so generate it from the production URL.
 
 Sign-in is recorded on the name lookup (`contacts.last_signed_in_at`,
 `db/04_signin.sql`). Credentials come from `ADMIN_EMAIL` / `ADMIN_PASSWORD`
