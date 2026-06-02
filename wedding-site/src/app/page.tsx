@@ -12,7 +12,7 @@ interface TimeLeft {
   seconds: number;
 }
 
-function calculateTimeLeft(): TimeLeft {
+function calculateTimeLeft(): TimeLeft { 
   const difference = WEDDING_DATE.getTime() - new Date().getTime();
 
   if (difference <= 0) {
