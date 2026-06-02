@@ -82,11 +82,12 @@ a separate `admin_session` cookie, guarded by `src/proxy.ts`.
 Requires Node 20+ and Docker.
 
 ```bash
-# 1. Start Postgres (auto-loads db/*.sql in order on first volume creation)
+# 1. Start Postgres
 docker compose up -d db
-# Note: init scripts only run when the volume is first created. If you add a new
-# db/*.sql to an existing volume, apply it manually, e.g.:
-#   docker compose exec -T db psql -U wedding -d wedding < db/03_party.sql
+# The app applies db/*.sql schema migrations automatically on startup (see
+# "Migrations" below), so you don't need to apply new migration files by hand.
+# The compose container also runs db/*.sql (incl. the seed) when the volume is
+# first created, which is what gives local dev its sample contacts.
 
 # 2. Configure environment
 cp .env.example .env.local
@@ -107,6 +108,28 @@ Open http://localhost:3000. Seeded test guests include **Tyler Harker** and
 | `JWT_SECRET`     | Secret for signing session JWTs. `openssl rand -base64 32` |
 | `ADMIN_EMAIL`    | Admin login email for `/admin` (default `test@test.com`). |
 | `ADMIN_PASSWORD` | Admin login password for `/admin` (default `password`).   |
+
+## Migrations
+
+Schema migrations live in `db/*.sql` and are **applied automatically on server
+startup** via the Next.js instrumentation hook (`src/instrumentation.ts` →
+`src/lib/migrate.ts`). They run in filename order, are idempotent
+(`CREATE/ALTER ... IF NOT EXISTS`), are guarded by a Postgres advisory lock (safe
+with multiple replicas), and **skip any `*seed*` file** so production never gets
+sample data. The `db/` folder is copied into the Docker image for this.
+
+To add a migration, drop a new numbered file in `db/` (e.g. `db/06_xyz.sql`) —
+it applies on the next boot. On startup the server also logs which env vars are
+set (never their values); a `MISSING` there explains 500s:
+
+```
+[startup] env — DATABASE_URL: set | JWT_SECRET: set | ADMIN_EMAIL: default(test@test.com)
+[migrate] applied 01_schema.sql
+...
+```
+
+> New production databases start empty — after the first deploy, **insert your
+> real contact list** (the seed is dev-only). See below.
 
 ## The guest contact list
 
