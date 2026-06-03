@@ -27,8 +27,9 @@ export default function RsvpPage() {
       });
 
       if (res.ok) {
-        // Cookie is set by the response; head to the dashboard.
-        router.push("/dashboard");
+        // First-timers go to the attendance step; returning guests to their dashboard.
+        const data = await res.json().catch(() => ({}));
+        router.push(data?.responded ? "/dashboard" : "/dashboard/attend");
         router.refresh();
         return;
       }

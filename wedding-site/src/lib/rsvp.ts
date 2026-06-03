@@ -11,19 +11,22 @@ export interface PartyMember {
 
 export interface PartyState {
   partyId: number | null;
-  submitted: boolean; // "Your Party" step complete
+  submitted: boolean; // guest-list ("Your Party") step complete
   attending: boolean | null; // null until answered; false = declined
+  attendAnswered: boolean; // the attendance step has been answered
   declined: boolean;
   members: PartyMember[];
+  maxPartySize: number; // total people allowed, including the primary guest
   partyComplete: boolean;
   mealsComplete: boolean; // attending && every member has a meal
   rsvpComplete: boolean; // declined, or attending with all meals chosen
 }
 
 interface PartyRow {
-  id: number;
+  id: number | null;
   submitted_at: Date | null;
   attending: boolean | null;
+  max_party_size: number;
 }
 
 interface MemberRow {
@@ -36,23 +39,30 @@ interface MemberRow {
 
 export async function getPartyState(contactId: number): Promise<PartyState> {
   const partyRes = await query<PartyRow>(
-    `SELECT id, submitted_at, attending FROM parties WHERE contact_id = $1`,
+    `SELECT p.id, p.submitted_at, p.attending, c.max_party_size
+       FROM contacts c
+       LEFT JOIN parties p ON p.contact_id = c.id
+      WHERE c.id = $1`,
     [contactId]
   );
-  const party = partyRes.rows[0];
+  const row = partyRes.rows[0];
+  const maxPartySize = row?.max_party_size ?? 2;
 
-  if (!party) {
+  if (!row || row.id === null) {
     return {
       partyId: null,
       submitted: false,
       attending: null,
+      attendAnswered: false,
       declined: false,
       members: [],
+      maxPartySize,
       partyComplete: false,
       mealsComplete: false,
       rsvpComplete: false,
     };
   }
+  const party = { id: row.id, submitted_at: row.submitted_at, attending: row.attending };
 
   const memRes = await query<MemberRow>(
     `SELECT id, first_name, last_name, is_primary, meal_choice
@@ -71,6 +81,7 @@ export async function getPartyState(contactId: number): Promise<PartyState> {
   }));
 
   const submitted = party.submitted_at !== null;
+  const attendAnswered = party.attending !== null;
   const declined = party.attending === false;
   const mealsComplete =
     !declined &&
@@ -82,8 +93,10 @@ export async function getPartyState(contactId: number): Promise<PartyState> {
     partyId: party.id,
     submitted,
     attending: party.attending,
+    attendAnswered,
     declined,
     members,
+    maxPartySize,
     partyComplete: submitted,
     mealsComplete,
     rsvpComplete: declined || mealsComplete,

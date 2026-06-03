@@ -6,11 +6,13 @@ export interface AdminContactProgress {
   name: string;
   signedIn: boolean;
   signedInLabel: string | null;
+  attendAnswered: boolean;
   partySubmitted: boolean;
   declined: boolean;
   mealsComplete: boolean;
   memberCount: number;
   mealsChosen: number;
+  maxPartySize: number;
 }
 
 export interface AdminGuest {
@@ -58,6 +60,7 @@ export async function getAdminSummary(): Promise<AdminSummary> {
     attending: boolean | null;
     member_count: number;
     meals_chosen: number;
+    max_party_size: number;
   }>(
     `SELECT c.id,
             c.first_name,
@@ -66,6 +69,7 @@ export async function getAdminSummary(): Promise<AdminSummary> {
             c.last_signed_in_at,
             (p.id IS NOT NULL AND p.submitted_at IS NOT NULL) AS party_submitted,
             p.attending AS attending,
+            c.max_party_size,
             COALESCE(m.member_count, 0) AS member_count,
             COALESCE(m.meals_chosen, 0) AS meals_chosen
        FROM contacts c
@@ -97,7 +101,7 @@ export async function getAdminSummary(): Promise<AdminSummary> {
   );
 
   const contacts: AdminContactProgress[] = progressRes.rows.map((r) => {
-    const declined = r.party_submitted && r.attending === false;
+    const declined = r.attending === false;
     return {
       contactId: r.id,
       name: `${r.first_name} ${r.last_name}`,
@@ -110,6 +114,7 @@ export async function getAdminSummary(): Promise<AdminSummary> {
             timeZone: "UTC",
           })
         : null,
+      attendAnswered: r.attending !== null,
       partySubmitted: r.party_submitted,
       declined,
       mealsComplete:
@@ -119,6 +124,7 @@ export async function getAdminSummary(): Promise<AdminSummary> {
         r.meals_chosen === r.member_count,
       memberCount: r.member_count,
       mealsChosen: r.meals_chosen,
+      maxPartySize: r.max_party_size,
     };
   });
 
@@ -134,8 +140,8 @@ export async function getAdminSummary(): Promise<AdminSummary> {
   return {
     invited: contacts.length,
     signedIn: contacts.filter((c) => c.signedIn).length,
-    responded: contacts.filter((c) => c.partySubmitted).length,
-    attending: contacts.filter((c) => c.partySubmitted && !c.declined).length,
+    responded: contacts.filter((c) => c.attendAnswered).length,
+    attending: contacts.filter((c) => c.attendAnswered && !c.declined).length,
     declined: contacts.filter((c) => c.declined).length,
     totalGuests: meals.total,
     meals: {

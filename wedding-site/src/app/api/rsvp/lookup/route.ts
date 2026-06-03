@@ -57,6 +57,13 @@ export async function POST(request: NextRequest) {
     contact.id,
   ]);
 
+  // First-time guests (haven't answered attendance) go straight to the attend step.
+  const partyRes = await query<{ answered: boolean }>(
+    `SELECT (attending IS NOT NULL) AS answered FROM parties WHERE contact_id = $1`,
+    [contact.id]
+  );
+  const responded = partyRes.rows[0]?.answered ?? false;
+
   const token = await createSessionToken({
     contactId: contact.id,
     firstName: contact.first_name,
@@ -66,6 +73,7 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({
     ok: true,
     guest: { firstName: contact.first_name, lastName: contact.last_name },
+    responded,
   });
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,

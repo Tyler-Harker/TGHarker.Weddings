@@ -13,6 +13,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen md:flex">
       <DashboardNav
         firstName={firstName}
+        attendDone={state?.attendAnswered ?? false}
         partyDone={state?.partyComplete ?? false}
         mealsDone={state?.mealsComplete ?? false}
         declined={state?.declined ?? false}

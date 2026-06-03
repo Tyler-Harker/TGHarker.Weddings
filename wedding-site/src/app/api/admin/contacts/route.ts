@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     lastName?: unknown;
     partyName?: unknown;
     email?: unknown;
+    maxPartySize?: unknown;
   };
   try {
     body = await request.json();
@@ -36,6 +37,10 @@ export async function POST(request: NextRequest) {
     typeof body.email === "string" && body.email.trim()
       ? body.email.trim()
       : null;
+  const maxPartySize =
+    Number.isInteger(body.maxPartySize) && (body.maxPartySize as number) >= 1
+      ? (body.maxPartySize as number)
+      : 2;
 
   if (!firstName || !lastName) {
     return NextResponse.json(
@@ -46,10 +51,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await query<{ id: number }>(
-      `INSERT INTO contacts (first_name, last_name, party_name, email)
-            VALUES ($1, $2, $3, $4)
+      `INSERT INTO contacts (first_name, last_name, party_name, email, max_party_size)
+            VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
-      [firstName, lastName, partyName, email]
+      [firstName, lastName, partyName, email, maxPartySize]
     );
     return NextResponse.json({ ok: true, id: result.rows[0].id });
   } catch (err) {
@@ -78,5 +83,41 @@ export async function DELETE(request: NextRequest) {
   }
 
   await query(`DELETE FROM contacts WHERE id = $1`, [id]);
+  return NextResponse.json({ ok: true });
+}
+
+// Update a guest's max party size.
+export async function PATCH(request: NextRequest) {
+  const admin = await getAdminSession();
+  if (!admin) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  let body: { id?: unknown; maxPartySize?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "invalid_request" },
+      { status: 400 }
+    );
+  }
+
+  const id = Number(body.id);
+  const maxPartySize = Number(body.maxPartySize);
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ ok: false, error: "invalid_id" }, { status: 400 });
+  }
+  if (!Number.isInteger(maxPartySize) || maxPartySize < 1) {
+    return NextResponse.json(
+      { ok: false, error: "invalid_size" },
+      { status: 400 }
+    );
+  }
+
+  await query(`UPDATE contacts SET max_party_size = $1 WHERE id = $2`, [
+    maxPartySize,
+    id,
+  ]);
   return NextResponse.json({ ok: true });
 }

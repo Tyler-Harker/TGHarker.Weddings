@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MEAL_OPTIONS, type MealChoice } from "@/lib/meals";
 import DeadlineNotice from "../deadline-notice";
@@ -118,8 +119,14 @@ export default function DinnerForm({ members, rsvpOpen }: DinnerFormProps) {
 
   return (
     <div className="max-w-3xl">
+      <Link
+        href="/dashboard/party"
+        className="inline-block text-sm font-sans text-muted hover:text-accent transition-colors mb-4"
+      >
+        ← Back
+      </Link>
       <p className="text-xs uppercase tracking-[0.3em] text-muted font-sans mb-3">
-        Step 2
+        Step 3
       </p>
       <h1 className="font-serif text-4xl md:text-5xl font-light text-foreground mb-4">
         Dinner Choices
@@ -147,6 +154,41 @@ export default function DinnerForm({ members, rsvpOpen }: DinnerFormProps) {
           </ul>
         ) : current ? (
           <div>
+            {/* Running summary of everyone's current choice */}
+            <div className="mb-6 rounded-lg border border-accent-light/40 bg-white/30 divide-y divide-accent-light/30">
+              {members.map((m) => {
+                const sel = selections[m.id];
+                const isCurrent = current.id === m.id;
+                return (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between gap-3 px-4 py-2.5"
+                  >
+                    <span
+                      className={`font-serif text-sm ${
+                        isCurrent ? "text-accent" : "text-foreground"
+                      }`}
+                    >
+                      {m.name}
+                      {isCurrent && (
+                        <span className="font-sans text-[0.65rem] uppercase tracking-wide text-accent/70">
+                          {" "}
+                          · choosing
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`font-sans text-xs ${
+                        sel ? "text-foreground" : "text-muted/60"
+                      }`}
+                    >
+                      {sel ? MEAL_LABEL[sel] : "Not selected"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
             <p className="font-sans text-xs uppercase tracking-[0.2em] text-muted mb-2">
               {editingId != null
                 ? "Update selection"

@@ -14,6 +14,7 @@ export default function AddGuestForm() {
   const [lastName, setLastName] = useState("");
   const [partyName, setPartyName] = useState("");
   const [email, setEmail] = useState("");
+  const [maxPartySize, setMaxPartySize] = useState(2);
   const [status, setStatus] = useState<Status>("idle");
 
   function clearStatus() {
@@ -28,13 +29,20 @@ export default function AddGuestForm() {
       const res = await fetch("/api/admin/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, partyName, email }),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          partyName,
+          email,
+          maxPartySize,
+        }),
       });
       if (res.ok) {
         setFirstName("");
         setLastName("");
         setPartyName("");
         setEmail("");
+        setMaxPartySize(2);
         setStatus("idle");
         router.refresh();
         return;
@@ -89,6 +97,19 @@ export default function AddGuestForm() {
           onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
         />
+        <label className="flex items-center gap-2 font-sans text-sm text-muted">
+          Max party size
+          <input
+            aria-label="Max party size"
+            type="number"
+            min={1}
+            value={maxPartySize}
+            onChange={(e) =>
+              setMaxPartySize(Math.max(1, Number(e.target.value) || 1))
+            }
+            className="w-20 border border-accent-light bg-white/70 rounded-md px-3 py-2 font-sans text-sm text-foreground outline-none focus:border-accent transition-colors"
+          />
+        </label>
       </div>
       <div className="mt-3 flex items-center gap-3 flex-wrap">
         <button

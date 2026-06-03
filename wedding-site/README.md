@@ -31,20 +31,21 @@ The dashboard (mobile-responsive: left sidebar on desktop, hamburger drawer on
 phones) walks each guest through completion-tracked steps that earn a green
 checkmark when done:
 
-1. **Your Party** (`/dashboard/party`) — the guest first chooses to **Accept**
-   or **Decline** (`parties.attending`). If attending, they confirm whether
+1. **Attend** (`/dashboard/attend`) — Accept or Decline (`parties.attending`).
+   First-time guests land here straight after login. Declining clears any guest
+   list (`party_members` removed, `submitted_at` reset) and skips the remaining
+   steps.
+2. **Your Party** (`/dashboard/party`) — only for attendees; confirm whether
    they're bringing additional guests and name them (the primary guest is always
-   included). If they decline, their guest list is deactivated (all
-   `party_members` removed) and the Dinner step is skipped. Saving marks the step
-   complete (`parties.submitted_at`).
-2. **Dinner Choices** (`/dashboard/dinner`) — locked until Your Party is
+   included). Saving marks the guest step complete (`parties.submitted_at`).
+3. **Dinner Choices** (`/dashboard/dinner`) — locked until Your Party is
    submitted (meals are per member). Each member picks Country Fried Chicken or
    Smoked Brisket. Complete once every member has a selection. On phones this is
    a one-guest-at-a-time stepper (only asking members who haven't chosen, saving
    each pick) with a review/change screen; desktop shows all members at once.
 
-The overview shows an **RSVP progress bar** (Signed In → Your Party → Dinner)
-so guests can see where they are.
+The overview shows an **RSVP progress bar** (Attend → Your Party → Dinner) whose
+steps are clickable once unlocked. On phones it also appears on each step page.
 
 Data lives in the `parties` and `party_members` tables (`db/03_party.sql`).
 Meal options and their images are defined in `src/lib/meals.ts`

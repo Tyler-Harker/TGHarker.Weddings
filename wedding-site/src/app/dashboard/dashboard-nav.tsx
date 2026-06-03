@@ -9,6 +9,7 @@ const COMING_SOON = ["Schedule", "Travel & Stay", "Registry"];
 
 interface DashboardNavProps {
   firstName: string;
+  attendDone: boolean;
   partyDone: boolean;
   mealsDone: boolean;
   declined: boolean;
@@ -52,6 +53,7 @@ function LockIcon() {
 
 export default function DashboardNav({
   firstName,
+  attendDone,
   partyDone,
   mealsDone,
   declined,
@@ -96,17 +98,46 @@ export default function DashboardNav({
         Your RSVP
       </p>
       <nav className="flex flex-col gap-1">
+        {/* Attend */}
         <Link
-          href="/dashboard/party"
+          href="/dashboard/attend"
           onClick={close}
           className={`${linkClass} ${
-            pathname === "/dashboard/party" ? "bg-accent-light/20" : ""
+            pathname === "/dashboard/attend" ? "bg-accent-light/20" : ""
           }`}
         >
-          <span>Your Party{declined ? " · Declined" : ""}</span>
-          {partyDone && <CheckIcon />}
+          <span>Attend{declined ? " · Declined" : ""}</span>
+          {attendDone && <CheckIcon />}
         </Link>
 
+        {/* Your Party */}
+        {declined ? (
+          <span className="flex items-center justify-between rounded-md px-3 py-2 font-sans text-sm text-muted/50 cursor-default">
+            <span>Your Party</span>
+            <span className="text-[0.6rem] uppercase tracking-wide">N/A</span>
+          </span>
+        ) : attendDone ? (
+          <Link
+            href="/dashboard/party"
+            onClick={close}
+            className={`${linkClass} ${
+              pathname === "/dashboard/party" ? "bg-accent-light/20" : ""
+            }`}
+          >
+            <span>Your Party</span>
+            {partyDone && <CheckIcon />}
+          </Link>
+        ) : (
+          <span
+            className="flex items-center justify-between rounded-md px-3 py-2 font-sans text-sm text-muted/60 cursor-default"
+            title="Answer attendance first"
+          >
+            <span>Your Party</span>
+            <LockIcon />
+          </span>
+        )}
+
+        {/* Dinner */}
         {declined ? (
           <span className="flex items-center justify-between rounded-md px-3 py-2 font-sans text-sm text-muted/50 cursor-default">
             <span>Dinner Choices</span>

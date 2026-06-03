@@ -3,21 +3,13 @@ import { getSession } from "@/lib/session";
 import { getPartyState } from "@/lib/rsvp";
 import { isRsvpOpen } from "@/lib/event";
 import RsvpProgress from "../rsvp-progress";
-import PartyForm from "./party-form";
+import AttendForm from "./attend-form";
 
-export default async function PartyPage() {
+export default async function AttendPage() {
   const session = await getSession();
   if (!session) redirect("/rsvp");
 
   const state = await getPartyState(session.contactId);
-  // Attendance must be answered first.
-  if (!state.attendAnswered) redirect("/dashboard/attend");
-  // Declined guests have no party to build.
-  if (state.declined) redirect("/dashboard");
-
-  const initialGuests = state.members
-    .filter((m) => !m.isPrimary)
-    .map((m) => ({ firstName: m.firstName, lastName: m.lastName }));
 
   return (
     <>
@@ -30,10 +22,8 @@ export default async function PartyPage() {
           declined={state.declined}
         />
       </div>
-      <PartyForm
-        primaryName={`${session.firstName} ${session.lastName}`}
-        initialGuests={initialGuests}
-        maxPartySize={state.maxPartySize}
+      <AttendForm
+        initialAttending={state.attending}
         rsvpOpen={isRsvpOpen()}
       />
     </>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 interface RsvpProgressProps {
+  attendDone: boolean;
   partyDone: boolean;
   mealsDone: boolean;
   declined: boolean;
@@ -25,22 +26,27 @@ function CheckSvg() {
 }
 
 export default function RsvpProgress({
+  attendDone,
   partyDone,
   mealsDone,
   declined,
 }: RsvpProgressProps) {
   const steps: Step[] = declined
     ? [
-        { label: "Signed In", done: true, href: null },
-        { label: "Response Sent", done: true, href: "/dashboard/party" },
+        { label: "Attend", done: true, href: "/dashboard/attend" },
+        { label: "Not Attending", done: true, href: null },
       ]
     : [
-        { label: "Signed In", done: true, href: null },
-        { label: "Your Party", done: partyDone, href: "/dashboard/party" },
+        { label: "Attend", done: attendDone, href: "/dashboard/attend" },
+        {
+          label: "Your Party",
+          done: partyDone,
+          href: attendDone ? "/dashboard/party" : null, // unlocked once attending
+        },
         {
           label: "Dinner",
           done: mealsDone,
-          href: partyDone ? "/dashboard/dinner" : null, // locked until party submitted
+          href: partyDone ? "/dashboard/dinner" : null, // unlocked once party submitted
         },
       ];
 

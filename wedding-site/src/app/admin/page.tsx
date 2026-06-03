@@ -6,6 +6,7 @@ import AdminLogoutButton from "./admin-logout-button";
 import QrGenerator from "./qr-generator";
 import AddGuestForm from "./add-guest-form";
 import RemoveContactButton from "./remove-contact-button";
+import MaxPartyEditor from "./max-party-editor";
 
 const MEAL_LABEL: Record<MealChoice, string> = Object.fromEntries(
   MEAL_OPTIONS.map((m) => [m.id, m.name])
@@ -97,6 +98,7 @@ export default async function AdminPage() {
                 <th className="px-4 py-3 font-medium text-center">Your Party</th>
                 <th className="px-4 py-3 font-medium text-center">Dinner</th>
                 <th className="px-4 py-3 font-medium text-center">Party Size</th>
+                <th className="px-4 py-3 font-medium text-center">Max Party</th>
                 <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -143,6 +145,9 @@ export default async function AdminPage() {
                   </td>
                   <td className="px-4 py-3 text-center text-muted">
                     {c.partySubmitted && !c.declined ? c.memberCount : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <MaxPartyEditor id={c.contactId} value={c.maxPartySize} />
                   </td>
                   <td className="px-4 py-3 text-right">
                     <RemoveContactButton

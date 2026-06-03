@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DeadlineNotice from "../deadline-notice";
 
@@ -12,268 +13,316 @@ interface Guest {
 interface PartyFormProps {
   primaryName: string;
   initialGuests: Guest[];
-  initialAttending: boolean | null;
-  alreadySubmitted: boolean;
+  maxPartySize: number;
   rsvpOpen: boolean;
 }
 
 type Status = "idle" | "saving" | "error";
 
+const inputClass =
+  "w-full border border-accent-light bg-white/60 rounded-md px-3 py-2 font-serif text-foreground outline-none focus:border-accent transition-colors disabled:opacity-70";
+
 export default function PartyForm({
   primaryName,
   initialGuests,
-  initialAttending,
-  alreadySubmitted,
+  maxPartySize,
   rsvpOpen,
 }: PartyFormProps) {
   const router = useRouter();
   const locked = !rsvpOpen;
-  const [attending, setAttending] = useState<boolean>(initialAttending ?? true);
   const [bringingGuests, setBringingGuests] = useState(initialGuests.length > 0);
-  const [guests, setGuests] = useState<Guest[]>(
-    initialGuests.length > 0 ? initialGuests : [{ firstName: "", lastName: "" }]
-  );
+  const [guests, setGuests] = useState<Guest[]>(initialGuests);
+  const [current, setCurrent] = useState<Guest>({ firstName: "", lastName: "" });
   const [status, setStatus] = useState<Status>("idle");
+  const [showSizeModal, setShowSizeModal] = useState(false);
 
-  function updateGuest(index: number, field: keyof Guest, value: string) {
-    setGuests((prev) =>
-      prev.map((g, i) => (i === index ? { ...g, [field]: value } : g))
-    );
-    if (status === "error") setStatus("idle");
-  }
-
-  function addGuest() {
-    setGuests((prev) => [...prev, { firstName: "", lastName: "" }]);
-  }
+  const isSaving = status === "saving";
+  const currentValid =
+    current.firstName.trim() !== "" && current.lastName.trim() !== "";
+  // Total party = the primary guest + the additional guests.
+  const partySize = 1 + guests.length;
+  const atMax = partySize >= maxPartySize;
 
   function removeGuest(index: number) {
     setGuests((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function addAnother() {
+    if (!currentValid) return;
+    setGuests((prev) => [
+      ...prev,
+      { firstName: current.firstName.trim(), lastName: current.lastName.trim() },
+    ]);
+    setCurrent({ firstName: "", lastName: "" });
+  }
+
+  function tryAddAnother() {
+    if (!currentValid) return;
+    if (atMax) {
+      setShowSizeModal(true);
+      return;
+    }
+    addAnother();
+  }
+
+  function tryMoveOn() {
+    // A typed-but-unfit guest can't be added — explain the limit first.
+    if (currentValid && atMax) {
+      setShowSizeModal(true);
+      return;
+    }
+    moveOn();
+  }
+
+  async function save(guestList: Guest[]) {
     if (locked) return;
     setStatus("saving");
-
-    const payloadGuests =
-      attending && bringingGuests
-        ? guests
-            .map((g) => ({
-              firstName: g.firstName.trim(),
-              lastName: g.lastName.trim(),
-            }))
-            .filter((g) => g.firstName && g.lastName)
-        : [];
-
+    const payload = guestList
+      .map((g) => ({ firstName: g.firstName.trim(), lastName: g.lastName.trim() }))
+      .filter((g) => g.firstName && g.lastName);
     try {
       const res = await fetch("/api/rsvp/party", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attending, guests: payloadGuests }),
+        body: JSON.stringify({ guests: payload }),
       });
       if (!res.ok) {
         setStatus("error");
         return;
       }
-      // Attending → on to dinner; declined → back to the dashboard.
-      router.push(attending ? "/dashboard/dinner" : "/dashboard");
+      router.push("/dashboard/dinner");
       router.refresh();
     } catch {
       setStatus("error");
     }
   }
 
-  const isSaving = status === "saving";
+  function moveOn() {
+    const finalGuests = currentValid
+      ? [
+          ...guests,
+          {
+            firstName: current.firstName.trim(),
+            lastName: current.lastName.trim(),
+          },
+        ]
+      : guests;
+    save(finalGuests);
+  }
 
+  function partyList(editable: boolean) {
+    return (
+      <ul className="rounded-lg border border-accent-light/40 divide-y divide-accent-light/30">
+        <li className="flex items-center justify-between px-4 py-2.5">
+          <span className="font-serif text-foreground">{primaryName}</span>
+          <span className="text-xs font-sans text-muted">You</span>
+        </li>
+        {guests.map((g, i) => (
+          <li
+            key={i}
+            className="flex items-center justify-between gap-3 px-4 py-2.5"
+          >
+            <span className="font-serif text-foreground">
+              {g.firstName} {g.lastName}
+            </span>
+            {editable && (
+              <button
+                type="button"
+                onClick={() => removeGuest(i)}
+                className="text-xs font-sans text-muted hover:text-red-700 transition-colors"
+              >
+                Remove
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  // ---- Read-only (after the deadline) ----
+  if (locked) {
+    return (
+      <div className="max-w-2xl">
+        <p className="text-xs uppercase tracking-[0.3em] text-muted font-sans mb-3">
+          Step 2
+        </p>
+        <h1 className="font-serif text-4xl md:text-5xl font-light text-foreground mb-4">
+          Your Party
+        </h1>
+        <div className="mb-8">
+          <DeadlineNotice open={rsvpOpen} />
+        </div>
+        {partyList(false)}
+      </div>
+    );
+  }
+
+  // ---- Compact guest-management view (after choosing "Yes") ----
+  if (bringingGuests) {
+    return (
+      <div className="max-w-2xl">
+        <button
+          type="button"
+          onClick={() => setBringingGuests(false)}
+          className="text-sm font-sans text-muted hover:text-accent transition-colors"
+        >
+          ← Back
+        </button>
+
+        <h1 className="font-serif text-3xl md:text-4xl font-light text-foreground mt-3 mb-5">
+          Your Party
+        </h1>
+
+        <div className="mb-2">{partyList(true)}</div>
+        <p className="text-xs font-sans text-muted mb-6">
+          {partySize} of {maxPartySize} in your party
+        </p>
+
+        <div className="flex flex-col gap-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
+            Add a guest
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              aria-label="Guest first name"
+              placeholder="First name"
+              value={current.firstName}
+              onChange={(e) => {
+                setCurrent((c) => ({ ...c, firstName: e.target.value }));
+                if (status === "error") setStatus("idle");
+              }}
+              className={inputClass}
+            />
+            <input
+              type="text"
+              aria-label="Guest last name"
+              placeholder="Last name"
+              value={current.lastName}
+              onChange={(e) => {
+                setCurrent((c) => ({ ...c, lastName: e.target.value }));
+                if (status === "error") setStatus("idle");
+              }}
+              className={inputClass}
+            />
+          </div>
+
+          {(currentValid || guests.length > 0) && (
+            <div className="flex flex-col sm:flex-row gap-3">
+              {currentValid && (
+                <button
+                  type="button"
+                  onClick={tryAddAnother}
+                  className="rounded-full border border-accent-light px-6 py-3 font-sans text-sm uppercase tracking-[0.15em] text-foreground hover:border-accent transition-colors"
+                >
+                  Add another guest
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={tryMoveOn}
+                disabled={isSaving}
+                className="rounded-full bg-accent px-8 py-3 font-sans text-sm uppercase tracking-[0.15em] text-white hover:bg-foreground transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSaving ? "Saving…" : "Move on"}
+              </button>
+            </div>
+          )}
+
+          {status === "error" && (
+            <p role="alert" className="text-sm font-sans text-red-700">
+              Something went wrong saving your party. Please try again.
+            </p>
+          )}
+        </div>
+
+        {showSizeModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-black/30"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="animate-pop-in max-w-sm w-full rounded-2xl border border-accent-light/60 bg-background shadow-xl px-6 py-7 text-center">
+              <h3 className="font-serif text-xl text-foreground mb-3">
+                Party size reached
+              </h3>
+              <p className="font-sans text-sm text-muted leading-relaxed mb-6">
+                Due to venue constraints, we have only allocated a group size of{" "}
+                {maxPartySize} for you. If you must bring additional (children
+                included), please reach out to Tyler or Kylie to adjust your
+                party size.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowSizeModal(false)}
+                className="rounded-full bg-accent px-8 py-3 font-sans text-sm uppercase tracking-[0.15em] text-white hover:bg-foreground transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---- The question (default) ----
   return (
     <div className="max-w-2xl">
+      <Link
+        href="/dashboard/attend"
+        className="inline-block text-sm font-sans text-muted hover:text-accent transition-colors mb-4"
+      >
+        ← Back
+      </Link>
       <p className="text-xs uppercase tracking-[0.3em] text-muted font-sans mb-3">
-        Step 1
+        Step 2
       </p>
+
       <h1 className="font-serif text-4xl md:text-5xl font-light text-foreground mb-4">
         Your Party
       </h1>
-      <p className="font-sans text-muted leading-relaxed mb-6">
-        Let us know who&apos;s celebrating with you. We&apos;ll use this to plan
-        seating and meals.
-      </p>
 
       <div className="mb-8">
         <DeadlineNotice open={rsvpOpen} />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-        {/* Primary guest */}
-        <div className="rounded-lg border border-accent-light/60 bg-white/40 px-5 py-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans mb-1">
-            Primary Guest
-          </p>
-          <p className="font-serif text-xl text-foreground">{primaryName}</p>
-        </div>
+      <div className="rounded-lg border border-accent-light/60 bg-white/40 px-5 py-4 mb-8">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans mb-1">
+          Primary Guest
+        </p>
+        <p className="font-serif text-xl text-foreground">{primaryName}</p>
+      </div>
 
-        {/* Attending? */}
-        <fieldset className="flex flex-col gap-3">
-          <legend className="font-sans text-sm text-foreground mb-2">
-            Will you be able to join us?
-          </legend>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              type="button"
-              onClick={() => setAttending(true)}
-              disabled={locked}
-              className={`rounded-full px-6 py-2 font-sans text-sm transition-colors disabled:cursor-not-allowed ${
-                attending
-                  ? "bg-accent text-white"
-                  : "border border-accent-light text-foreground hover:border-accent"
-              }`}
-            >
-              Joyfully Accept
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttending(false)}
-              disabled={locked}
-              className={`rounded-full px-6 py-2 font-sans text-sm transition-colors disabled:cursor-not-allowed ${
-                !attending
-                  ? "bg-accent text-white"
-                  : "border border-accent-light text-foreground hover:border-accent"
-              }`}
-            >
-              Regretfully Decline
-            </button>
-          </div>
-        </fieldset>
-
-        {!attending && (
-          <p className="font-sans text-sm text-muted leading-relaxed -mt-2">
-            We&apos;re sorry you can&apos;t make it — we&apos;ll miss you! Submit
-            below to send your regrets. You can change your response any time
-            before the deadline.
-          </p>
-        )}
-
-        {/* Bringing guests? (only when attending) */}
-        {attending && (
-          <>
-        <fieldset className="flex flex-col gap-3">
-          <legend className="font-sans text-sm text-foreground mb-2">
-            Will you be bringing any additional guests?
-          </legend>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setBringingGuests(true)}
-              disabled={locked}
-              className={`rounded-full px-6 py-2 font-sans text-sm transition-colors disabled:cursor-not-allowed ${
-                bringingGuests
-                  ? "bg-accent text-white"
-                  : "border border-accent-light text-foreground hover:border-accent"
-              }`}
-            >
-              Yes
-            </button>
-            <button
-              type="button"
-              onClick={() => setBringingGuests(false)}
-              disabled={locked}
-              className={`rounded-full px-6 py-2 font-sans text-sm transition-colors disabled:cursor-not-allowed ${
-                !bringingGuests
-                  ? "bg-accent text-white"
-                  : "border border-accent-light text-foreground hover:border-accent"
-              }`}
-            >
-              No, just me
-            </button>
-          </div>
-        </fieldset>
-
-        {/* Guest list */}
-        {bringingGuests && (
-          <div className="flex flex-col gap-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
-              Your Guests
-            </p>
-            {guests.map((guest, index) => (
-              <div
-                key={index}
-                className="flex flex-col gap-3 sm:flex-row sm:items-end rounded-lg border border-accent-light/40 p-3 sm:border-0 sm:p-0"
-              >
-                <div className="flex-1 flex flex-col gap-1">
-                  <label className="text-xs text-muted font-sans">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    value={guest.firstName}
-                    onChange={(e) =>
-                      updateGuest(index, "firstName", e.target.value)
-                    }
-                    disabled={locked}
-                    className="w-full border border-accent-light bg-white/60 rounded-md px-3 py-2 font-serif text-foreground outline-none focus:border-accent transition-colors disabled:opacity-70"
-                  />
-                </div>
-                <div className="flex-1 flex flex-col gap-1">
-                  <label className="text-xs text-muted font-sans">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    value={guest.lastName}
-                    onChange={(e) =>
-                      updateGuest(index, "lastName", e.target.value)
-                    }
-                    disabled={locked}
-                    className="w-full border border-accent-light bg-white/60 rounded-md px-3 py-2 font-serif text-foreground outline-none focus:border-accent transition-colors disabled:opacity-70"
-                  />
-                </div>
-                {!locked && (
-                  <button
-                    type="button"
-                    onClick={() => removeGuest(index)}
-                    aria-label="Remove guest"
-                    className="self-start sm:mb-1 px-3 py-2 text-muted hover:text-accent font-sans text-sm transition-colors"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-            {!locked && (
-              <button
-                type="button"
-                onClick={addGuest}
-                className="self-start text-sm font-sans text-accent hover:text-foreground transition-colors"
-              >
-                + Add another guest
-              </button>
-            )}
-          </div>
-        )}
-          </>
-        )}
-
-        {status === "error" && (
-          <p role="alert" className="text-sm font-sans text-red-700">
-            Something went wrong saving your party. Please try again.
-          </p>
-        )}
-
-        {!locked && (
+      <fieldset className="flex flex-col gap-3">
+        <legend className="font-sans text-sm text-foreground mb-2">
+          Are you bringing any additional guests?
+        </legend>
+        <div className="flex flex-col gap-3">
           <button
-            type="submit"
+            type="button"
+            onClick={() => save([])}
             disabled={isSaving}
-            className="self-start rounded-full bg-accent px-8 py-3 font-sans text-sm uppercase tracking-[0.2em] text-white transition-colors duration-300 hover:bg-foreground disabled:opacity-60 disabled:cursor-not-allowed"
+            className="rounded-full px-6 py-2 font-sans text-sm transition-colors border border-accent-light text-foreground hover:border-accent disabled:cursor-not-allowed"
           >
-            {isSaving
-              ? "Saving…"
-              : !attending
-                ? "Send Regrets"
-                : alreadySubmitted
-                  ? "Update Party"
-                  : "Save & Continue"}
+            {isSaving ? "Saving…" : "No, just me"}
           </button>
-        )}
-      </form>
+          <button
+            type="button"
+            onClick={() => setBringingGuests(true)}
+            className="rounded-full px-6 py-2 font-sans text-sm transition-colors border border-accent-light text-foreground hover:border-accent"
+          >
+            Yes
+          </button>
+        </div>
+      </fieldset>
+
+      {status === "error" && (
+        <p role="alert" className="mt-6 text-sm font-sans text-red-700">
+          Something went wrong saving your party. Please try again.
+        </p>
+      )}
     </div>
   );
 }

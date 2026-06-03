@@ -25,15 +25,59 @@ function StatusBadge({ done }: { done: boolean }) {
   );
 }
 
+function StepCard({
+  stepLabel,
+  title,
+  description,
+  href,
+  done,
+}: {
+  stepLabel: string;
+  title: string;
+  description: string;
+  href: string | null;
+  done: boolean;
+}) {
+  const inner = (
+    <>
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans mb-1">
+          {stepLabel}
+        </p>
+        <p
+          className={`font-serif text-xl ${href ? "text-foreground" : "text-muted"}`}
+        >
+          {title}
+        </p>
+        <p className="font-sans text-sm text-muted mt-1">{description}</p>
+      </div>
+      {href && <StatusBadge done={done} />}
+    </>
+  );
+
+  return href ? (
+    <Link
+      href={href}
+      className="flex items-center justify-between rounded-lg border border-accent-light/60 bg-white/40 px-6 py-5 hover:border-accent transition-colors"
+    >
+      {inner}
+    </Link>
+  ) : (
+    <div className="flex items-center justify-between rounded-lg border border-accent-light/30 bg-white/20 px-6 py-5 opacity-70">
+      {inner}
+    </div>
+  );
+}
+
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/rsvp");
 
   const state = await getPartyState(session.contactId);
+  const attendDone = state.attendAnswered;
   const partyDone = state.partyComplete;
   const mealsDone = state.mealsComplete;
   const declined = state.declined;
-  const allDone = partyDone && mealsDone;
 
   return (
     <div className="max-w-2xl">
@@ -46,13 +90,14 @@ export default async function DashboardPage() {
       <p className="font-sans text-muted leading-relaxed mb-10">
         {declined
           ? "You've let us know you can't make it — we'll miss you! You can change your response any time before the deadline."
-          : allDone
+          : state.rsvpComplete
             ? "Your RSVP is complete — thank you!"
             : "Let's get your RSVP wrapped up. Complete the steps below."}
       </p>
 
       <div className="mb-6">
         <RsvpProgress
+          attendDone={attendDone}
           partyDone={partyDone}
           mealsDone={mealsDone}
           declined={declined}
@@ -64,50 +109,46 @@ export default async function DashboardPage() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <Link
-          href="/dashboard/party"
-          className="flex items-center justify-between rounded-lg border border-accent-light/60 bg-white/40 px-6 py-5 hover:border-accent transition-colors"
-        >
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans mb-1">
-              Step 1
-            </p>
-            <p className="font-serif text-xl text-foreground">Your Party</p>
-            <p className="font-sans text-sm text-muted mt-1">
-              {declined ? "You've declined — tap to change." : "Tell us who's coming."}
-            </p>
-          </div>
-          <StatusBadge done={partyDone} />
-        </Link>
+        <StepCard
+          stepLabel="Step 1"
+          title="Will You Attend?"
+          href="/dashboard/attend"
+          done={attendDone}
+          description={
+            declined
+              ? "You've declined — tap to change."
+              : attendDone
+                ? "You're attending — tap to change."
+                : "Let us know if you can make it."
+          }
+        />
 
-        {declined ? null : partyDone ? (
-          <Link
-            href="/dashboard/dinner"
-            className="flex items-center justify-between rounded-lg border border-accent-light/60 bg-white/40 px-6 py-5 hover:border-accent transition-colors"
-          >
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans mb-1">
-                Step 2
-              </p>
-              <p className="font-serif text-xl text-foreground">Dinner Choices</p>
-              <p className="font-sans text-sm text-muted mt-1">
-                Pick a meal for everyone in your party.
-              </p>
-            </div>
-            <StatusBadge done={mealsDone} />
-          </Link>
-        ) : (
-          <div className="flex items-center justify-between rounded-lg border border-accent-light/30 bg-white/20 px-6 py-5 opacity-70">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans mb-1">
-                Step 2
-              </p>
-              <p className="font-serif text-xl text-muted">Dinner Choices</p>
-              <p className="font-sans text-sm text-muted mt-1">
-                Complete Your Party to unlock.
-              </p>
-            </div>
-          </div>
+        {!declined && (
+          <StepCard
+            stepLabel="Step 2"
+            title="Your Party"
+            href={attendDone ? "/dashboard/party" : null}
+            done={partyDone}
+            description={
+              attendDone
+                ? "Tell us who's coming."
+                : "Answer attendance to unlock."
+            }
+          />
+        )}
+
+        {!declined && (
+          <StepCard
+            stepLabel="Step 3"
+            title="Dinner Choices"
+            href={partyDone ? "/dashboard/dinner" : null}
+            done={mealsDone}
+            description={
+              partyDone
+                ? "Pick a meal for everyone in your party."
+                : "Complete Your Party to unlock."
+            }
+          />
         )}
       </div>
     </div>
