@@ -273,11 +273,6 @@ export default function DinnerForm({ members, rsvpOpen }: DinnerFormProps) {
         ) : (
           /* Everyone has chosen — review + change */
           <div>
-            <div className="rounded-md border border-accent-light bg-accent-light/15 px-4 py-3 mb-6">
-              <p className="font-sans text-sm text-foreground">
-                All set — everyone has a meal selected. Thank you!
-              </p>
-            </div>
             <ul className="flex flex-col divide-y divide-accent-light/40 rounded-lg border border-accent-light/60">
               {members.map((m) => (
                 <li
@@ -300,6 +295,11 @@ export default function DinnerForm({ members, rsvpOpen }: DinnerFormProps) {
                 </li>
               ))}
             </ul>
+            <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 mt-6">
+              <p className="font-sans text-sm text-gray-900 font-bold">
+                All set — everyone has a meal selected. Thank you!
+              </p>
+            </div>
             {status === "error" && (
               <p role="alert" className="mt-4 text-sm font-sans text-red-700">
                 Something went wrong saving. Please try again.

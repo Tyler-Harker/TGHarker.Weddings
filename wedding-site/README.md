@@ -67,6 +67,10 @@ A simple admin view at `/admin` (login at `/admin/login`) shows:
 - **Guest List** management — add guests (name, optional household + email) and
   remove them inline. Removing a contact cascades to their RSVP party and meal
   selections. This is how you populate a fresh production invite list.
+- **Max party size** per guest (`contacts.max_party_size`, default 2 =
+  themselves + 1), editable with the ± control in the table. The party step
+  enforces it (server + UI); exceeding it shows the guest a "venue constraints"
+  modal pointing them to Tyler/Kylie.
 - **Guest Progress** across the whole invite list — who has **signed in** (and
   when) vs. not, plus per-stage completion (Your Party, Dinner) for each contact.
 - **All Guests** — every party member (incl. plus-ones), which RSVP added them,

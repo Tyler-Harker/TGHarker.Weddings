@@ -33,6 +33,7 @@ export default function PartyForm({
   const [bringingGuests, setBringingGuests] = useState(initialGuests.length > 0);
   const [guests, setGuests] = useState<Guest[]>(initialGuests);
   const [current, setCurrent] = useState<Guest>({ firstName: "", lastName: "" });
+  const [adding, setAdding] = useState(initialGuests.length === 0);
   const [status, setStatus] = useState<Status>("idle");
   const [showSizeModal, setShowSizeModal] = useState(false);
 
@@ -47,31 +48,37 @@ export default function PartyForm({
     setGuests((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function addAnother() {
-    if (!currentValid) return;
-    setGuests((prev) => [
-      ...prev,
-      { firstName: current.firstName.trim(), lastName: current.lastName.trim() },
-    ]);
-    setCurrent({ firstName: "", lastName: "" });
-  }
-
-  function tryAddAnother() {
+  // "Add Guest" — commit the typed guest, then show the party list.
+  function addGuest() {
     if (!currentValid) return;
     if (atMax) {
       setShowSizeModal(true);
       return;
     }
-    addAnother();
+    setGuests((prev) => [
+      ...prev,
+      { firstName: current.firstName.trim(), lastName: current.lastName.trim() },
+    ]);
+    setCurrent({ firstName: "", lastName: "" });
+    setAdding(false);
   }
 
-  function tryMoveOn() {
-    // A typed-but-unfit guest can't be added — explain the limit first.
-    if (currentValid && atMax) {
+  // "Add another guest" — go back to the entry form for the next guest.
+  function addAnother() {
+    if (atMax) {
       setShowSizeModal(true);
       return;
     }
-    moveOn();
+    setCurrent({ firstName: "", lastName: "" });
+    setAdding(true);
+  }
+
+  function back() {
+    if (adding && guests.length > 0) {
+      setAdding(false);
+      return;
+    }
+    setBringingGuests(false);
   }
 
   async function save(guestList: Guest[]) {
@@ -95,19 +102,6 @@ export default function PartyForm({
     } catch {
       setStatus("error");
     }
-  }
-
-  function moveOn() {
-    const finalGuests = currentValid
-      ? [
-          ...guests,
-          {
-            firstName: current.firstName.trim(),
-            lastName: current.lastName.trim(),
-          },
-        ]
-      : guests;
-    save(finalGuests);
   }
 
   function partyList(editable: boolean) {
@@ -158,13 +152,13 @@ export default function PartyForm({
     );
   }
 
-  // ---- Compact guest-management view (after choosing "Yes") ----
+  // ---- Guest management (after choosing "Yes") ----
   if (bringingGuests) {
     return (
       <div className="max-w-2xl">
         <button
           type="button"
-          onClick={() => setBringingGuests(false)}
+          onClick={back}
           className="text-sm font-sans text-muted hover:text-accent transition-colors"
         >
           ← Back
@@ -174,68 +168,87 @@ export default function PartyForm({
           Your Party
         </h1>
 
-        <div className="mb-2">{partyList(true)}</div>
-        <p className="text-xs font-sans text-muted mb-6">
-          {partySize} of {maxPartySize} in your party
-        </p>
-
-        <div className="flex flex-col gap-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
-            Add a guest
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              aria-label="Guest first name"
-              placeholder="First name"
-              value={current.firstName}
-              onChange={(e) => {
-                setCurrent((c) => ({ ...c, firstName: e.target.value }));
-                if (status === "error") setStatus("idle");
-              }}
-              className={inputClass}
-            />
-            <input
-              type="text"
-              aria-label="Guest last name"
-              placeholder="Last name"
-              value={current.lastName}
-              onChange={(e) => {
-                setCurrent((c) => ({ ...c, lastName: e.target.value }));
-                if (status === "error") setStatus("idle");
-              }}
-              className={inputClass}
-            />
-          </div>
-
-          {(currentValid || guests.length > 0) && (
-            <div className="flex flex-col sm:flex-row gap-3">
+        {adding ? (
+          /* Entry form — the party summary stays visible above it */
+          <div className="flex flex-col gap-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans mb-2">
+                Your Party
+              </p>
+              <div className="mb-2">{partyList(true)}</div>
+              <p className="text-xs font-sans text-muted">
+                {partySize} of {maxPartySize} in your party
+              </p>
+            </div>
+            <div className="flex flex-col gap-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted font-sans">
+                Add a guest
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  aria-label="Guest first name"
+                  placeholder="First name"
+                  value={current.firstName}
+                  onChange={(e) =>
+                    setCurrent((c) => ({ ...c, firstName: e.target.value }))
+                  }
+                  className={inputClass}
+                />
+                <input
+                  type="text"
+                  aria-label="Guest last name"
+                  placeholder="Last name"
+                  value={current.lastName}
+                  onChange={(e) =>
+                    setCurrent((c) => ({ ...c, lastName: e.target.value }))
+                  }
+                  className={inputClass}
+                />
+              </div>
               {currentValid && (
                 <button
                   type="button"
-                  onClick={tryAddAnother}
-                  className="rounded-full border border-accent-light px-6 py-3 font-sans text-sm uppercase tracking-[0.15em] text-foreground hover:border-accent transition-colors"
+                  onClick={addGuest}
+                  className="self-start rounded-full bg-accent px-8 py-3 font-sans text-sm uppercase tracking-[0.15em] text-white hover:bg-foreground transition-colors"
                 >
-                  Add another guest
+                  Add Guest
                 </button>
               )}
+            </div>
+          </div>
+        ) : (
+          /* The party list + next actions */
+          <>
+            <div className="mb-2">{partyList(true)}</div>
+            <p className="text-xs font-sans text-muted mb-6">
+              {partySize} of {maxPartySize} in your party
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
-                onClick={tryMoveOn}
+                onClick={addAnother}
+                className="rounded-full border border-accent-light px-6 py-3 font-sans text-sm uppercase tracking-[0.15em] text-foreground hover:border-accent transition-colors"
+              >
+                Add another guest
+              </button>
+              <button
+                type="button"
+                onClick={() => save(guests)}
                 disabled={isSaving}
                 className="rounded-full bg-accent px-8 py-3 font-sans text-sm uppercase tracking-[0.15em] text-white hover:bg-foreground transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isSaving ? "Saving…" : "Move on"}
+                {isSaving ? "Saving…" : "Choose Dinner Options"}
               </button>
             </div>
-          )}
+          </>
+        )}
 
-          {status === "error" && (
-            <p role="alert" className="text-sm font-sans text-red-700">
-              Something went wrong saving your party. Please try again.
-            </p>
-          )}
-        </div>
+        {status === "error" && (
+          <p role="alert" className="mt-4 text-sm font-sans text-red-700">
+            Something went wrong saving your party. Please try again.
+          </p>
+        )}
 
         {showSizeModal && (
           <div
@@ -279,7 +292,6 @@ export default function PartyForm({
       <p className="text-xs uppercase tracking-[0.3em] text-muted font-sans mb-3">
         Step 2
       </p>
-
       <h1 className="font-serif text-4xl md:text-5xl font-light text-foreground mb-4">
         Your Party
       </h1>
@@ -310,7 +322,10 @@ export default function PartyForm({
           </button>
           <button
             type="button"
-            onClick={() => setBringingGuests(true)}
+            onClick={() => {
+              setAdding(guests.length === 0);
+              setBringingGuests(true);
+            }}
             className="rounded-full px-6 py-2 font-sans text-sm transition-colors border border-accent-light text-foreground hover:border-accent"
           >
             Yes
