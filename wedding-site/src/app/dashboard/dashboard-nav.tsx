@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./logout-button";
 
-const COMING_SOON = ["Schedule", "Travel & Stay", "Registry"];
+const COMING_SOON = ["Travel & Stay", "Registry"];
 
 interface DashboardNavProps {
   firstName: string;
@@ -169,6 +169,14 @@ export default function DashboardNav({
         More
       </p>
       <nav className="flex flex-col gap-1">
+        <Link
+          href="/dashboard/schedule"
+          onClick={close}
+          aria-current={pathname === "/dashboard/schedule" ? "page" : undefined}
+          className={`${linkClass} ${pathname === "/dashboard/schedule" ? "bg-accent-light/20" : ""}`}
+        >
+          Schedule
+        </Link>
         {COMING_SOON.map((label) => (
           <span
             key={label}

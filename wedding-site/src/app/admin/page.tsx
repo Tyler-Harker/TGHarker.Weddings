@@ -6,6 +6,8 @@ import AdminLogoutButton from "./admin-logout-button";
 import QrGenerator from "./qr-generator";
 import AddGuestForm from "./add-guest-form";
 import RemoveContactButton from "./remove-contact-button";
+import ScheduleEditor from "./schedule-editor";
+import { getSchedule } from "@/lib/schedule-data";
 import MaxPartyEditor from "./max-party-editor";
 
 const MEAL_LABEL: Record<MealChoice, string> = Object.fromEntries(
@@ -47,7 +49,7 @@ export default async function AdminPage() {
   const admin = await getAdminSession();
   if (!admin) redirect("/admin/login");
 
-  const s = await getAdminSummary();
+  const [s, schedule] = await Promise.all([getAdminSummary(), getSchedule("schedule")]);
   const notSignedIn = s.invited - s.signedIn;
 
   return (
@@ -79,6 +81,8 @@ export default async function AdminPage() {
         <SummaryCard label={MEAL_LABEL.brisket} value={s.meals.brisket} />
         <SummaryCard label="No selection yet" value={s.meals.unselected} />
       </div>
+
+      <ScheduleEditor initialEntries={schedule} />
 
       {/* Guest list management + progress across the full invite list */}
       <section className="mb-12">
